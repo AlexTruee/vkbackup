@@ -151,7 +151,7 @@ if __name__ == '__main__':
                     format="%(asctime)s %(levelname)s %(message)s")
     
     # Введите ID пользователя Vkontakte
-    owner_id = 394582520
+    owner_id = 353555
     
     # Введите токен с Полигона Яндекс.Диска
     access_token_yd = os.getenv('ACCESS_TOKEN_YD')
