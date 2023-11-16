@@ -156,10 +156,13 @@ if __name__ == '__main__':
     # Введите токен с Полигона Яндекс.Диска
     access_token_yd = os.getenv('ACCESS_TOKEN_YD')
     
+    # Введите идентификатор альбома для скачивания ('profile', 'wall', 'saved')
+    album_id='profile'
+    
     # Введите количество фото которые хотите сохранить (по умолчанию = 5)
     number_photos = 5
     
-    vk = Vkontakte(owner_id, album_id='profile', number_photos=number_photos)
+    vk = Vkontakte(owner_id, album_id=album_id, number_photos=number_photos)
     yd = YandexDisk(owner_id, access_token_yd, vk.get_photo())
     yd.upload_photo()
 
