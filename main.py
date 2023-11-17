@@ -27,6 +27,7 @@ class Vkontakte:
             'photo_sizes': 1
         }
         try:
+            print('Собираем фото в Vkontakte.')
             response = requests.get(f'{self.HEAD_URL_VK}/photos.get', params=params)
 
             response.raise_for_status()
@@ -73,23 +74,51 @@ class YandexDisk:
     def create_folder(self, session):
         params = {
             'path': self.owner_id,
-            'fields': 'name'
+            'fields': 'public_key'
         }
         try:
+            print('Создаем папку на YandexDisk.')
             response = session.get(self.HEAD_URL_YD, params=params)
-
+            response.raise_for_status()
+            
             if response.ok:
-                params.update({'permanently': 'true'})
-                session.delete(self.HEAD_URL_YD, params=params)
+                if response.json().get('public_key'):
+                    response = session.put(f'{self.HEAD_URL_YD}/unpublish', params=params)
+                    response.raise_for_status()
+                    time.sleep(2)
+                    
+                params.update({
+                    'fields': 'name',
+                    'permanently': 'true'
+                    })
+                
+                get_response = session.get(self.HEAD_URL_YD, params=params)
+                while get_response.ok:
+                    session.delete(self.HEAD_URL_YD, params=params)
+                    get_response = session.get(self.HEAD_URL_YD, params=params)
+                response.raise_for_status()
+                
             time.sleep(2)
+            del params['permanently']
             response = session.put(self.HEAD_URL_YD, params=params)
 
             response.raise_for_status()
+            
+            time.sleep(2)
+            response = session.put(f'{self.HEAD_URL_YD}/publish', params=params)
 
-            logging.info('Создана папка на Yandex.Disk.')
+            params.update({'fields':'public_url'})
+            
+            response = session.get(self.HEAD_URL_YD, params=params)
+            response.raise_for_status()
+            
+            res = response.json()
+            logging.info('Создана папка на YandexDisk.')
 
         except Exception as e:
-            logging.error(f'Ошибка создания папки на Yandex.Disk. {e}')
+            logging.error(f'Ошибка создания папки на YandexDisk. {e}')
+        
+        return res['public_url']
 
     def loader(self, file_name, file_url, session):
         params = {
@@ -102,7 +131,7 @@ class YandexDisk:
 
             response.raise_for_status()
         except Exception as e:
-            logging.error(f'Ошибка загрузки файла на Yandex.Disk. {e}')
+            logging.error(f'Ошибка загрузки файла на YandexDisk. {e}')
 
     def upload_photo(self):
         session = self.session()
@@ -113,10 +142,10 @@ class YandexDisk:
 
             json_file_list = []
 
-            self.create_folder(session)
+            public_url = self.create_folder(session)
 
             for items in tqdm(self.file_list, bar_format="{l_bar}{bar:30}| {n_fmt}/{total_fmt}",
-                              desc="Загрузка файлов", colour='green'):
+                              desc="Загружаем фото", colour='green'):
                 file_url = items['sizes'][-1]['url']
                 file_type = file_url.split("?")[0][-3:]
                 file_name = f'{items["likes"]["count"]}.{file_type}'
@@ -132,13 +161,13 @@ class YandexDisk:
                     "size": file_size
                 })
 
-            logging.info('Файлы загружены на Yandex.Disk.')
+            logging.info(f'Файлы загружены на YandexDisk. {public_url}')
 
             with open('upload_photo_list.json', 'w', encoding='utf-8') as f:
                 json.dump(json_file_list, f, ensure_ascii=False, indent=4)
 
             logging.info('Список загруженных файлов в формате json сформирован (upload_photo_list.json).')
-            print('Фотографии успешно загружены!')
+            print('Фотографии успешно загружены!', f'Ссылка для просмотра: {public_url}', sep='\n')
 
             return json_file_list
         except Exception:
